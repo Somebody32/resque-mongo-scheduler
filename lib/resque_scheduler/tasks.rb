@@ -11,6 +11,7 @@ namespace :resque do
     require 'resque_scheduler'
 
     Resque::Scheduler.verbose = true if ENV['VERBOSE']
+    Resque::Scheduler.dynamic = true if ENV['DYNAMIC']
     Resque::Scheduler.run
   end
 
