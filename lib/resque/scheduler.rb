@@ -11,13 +11,13 @@ module Resque
 
       # If true, logs more stuff...
       attr_accessor :verbose
-      
+
       # If set, produces no output
       attr_accessor :mute
-      
+
       # If set, will try to update the schulde in the loop
       attr_accessor :dynamic
-      
+
       # the Rufus::Scheduler jobs that are scheduled
       def scheduled_jobs
         @@scheduled_jobs
@@ -49,7 +49,7 @@ module Resque
       def register_signal_handlers
         trap("TERM") { shutdown }
         trap("INT") { shutdown }
-        
+
         begin
           trap('QUIT') { shutdown   }
           trap('USR1') { kill_child }
@@ -63,16 +63,16 @@ module Resque
       # rufus scheduler instance
       def load_schedule!
         log! "Schedule empty! Set Resque.schedule" if Resque.schedule.empty?
-        
+
         @@scheduled_jobs = {}
-        
+
         Resque.schedule.each do |name, config|
           load_schedule_job(name, config)
         end
         Resque.schedules_changed.remove
         procline "Schedules Loaded"
       end
-      
+
       # Loads a job schedule into the Rufus::Scheduler and stores it in @@scheduled_jobs
       def load_schedule_job(name, config)
         # If rails_env is set in the config, enforce ENV['RAILS_ENV'] as
@@ -86,7 +86,8 @@ module Resque
           interval_types.each do |interval_type|
             if !config[interval_type].nil? && config[interval_type].length > 0
               begin
-                @@scheduled_jobs[name] = rufus_scheduler.send(interval_type, config[interval_type]) do
+                options = config[:first_at] ? { :first_at => config[:first_at] } : nil
+                @@scheduled_jobs[name] = rufus_scheduler.send(interval_type, config[interval_type], options) do
                   log! "queueing #{config['class']} (#{name})"
                   enqueue_from_config(config)
                 end
@@ -121,7 +122,7 @@ module Resque
           end
         end
       end
-      
+
       # Enqueues all delayed jobs for a timestamp
       def enqueue_delayed_items_for_timestamp(timestamp)
         item = nil
@@ -162,7 +163,7 @@ module Resque
           constantize(job_klass).scheduled(queue, klass_name, *params)
         else
           Resque.enqueue(constantize(klass_name), *params)
-        end        
+        end
       end
 
       def rufus_scheduler
@@ -177,14 +178,14 @@ module Resque
         @@scheduled_jobs = {}
         rufus_scheduler
       end
-      
+
       def reload_schedule!
         procline "Reloading Schedule"
         clear_schedule!
         Resque.reload_schedule!
         load_schedule!
       end
-      
+
       def update_schedule
         if Resque.schedules_changed.count > 0
           procline "Updating schedule"
@@ -200,7 +201,7 @@ module Resque
           procline "Schedules Loaded"
         end
       end
-      
+
       def unschedule_job(name)
         if scheduled_jobs[name]
           log "Removing schedule #{name}"
@@ -231,7 +232,7 @@ module Resque
         # add "verbose" logic later
         log!(msg) if verbose
       end
-      
+
       def procline(string)
         $0 = "resque-mongo-scheduler-#{ResqueScheduler::Version}: #{string}"
         log! $0
